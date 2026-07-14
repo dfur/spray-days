@@ -2,7 +2,7 @@
 // load, cache fallback so the app still opens with no signal. Forecast data is
 // never cached here — the page keeps its own localStorage cache, and Open-Meteo
 // requests are cross-origin and never intercepted.
-const CACHE = 'spray-shell-v1';
+const CACHE = 'spray-shell-v2';
 const SHELL = ['./', 'manifest.json', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

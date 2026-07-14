@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Spray droplet icon on green adaptive background -->
+<!-- Flat-fan spray nozzle on green adaptive background (matches icons/*.png) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-  <!-- Raindrop / spray droplet -->
-  <path android:fillColor="#FFFFFF"
-      android:pathData="M54,18 C42,34 32,48 32,60 C32,74.4 42,84 54,84 C66,84 76,74.4 76,60 C76,48 66,34 54,18 Z"/>
+  <!-- scaled toward centre so the art clears the adaptive-icon safe zone -->
+  <group
+      android:scaleX="0.85"
+      android:scaleY="0.85"
+      android:pivotX="54"
+      android:pivotY="54">
+    <!-- nozzle body + tip -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M48.5,15 h11 a2.5,2.5 0 0 1 2.5,2.5 v6 a2.5,2.5 0 0 1 -2.5,2.5 h-11 a2.5,2.5 0 0 1 -2.5,-2.5 v-6 a2.5,2.5 0 0 1 2.5,-2.5 Z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M44,26 h20 l3.5,9 h-27 Z"/>
+    <!-- fan sheet -->
+    <path android:fillColor="#FFFFFF" android:fillAlpha="0.72"
+        android:pathData="M54,36 L26,82 L82,82 Z"/>
+    <!-- streaks -->
+    <path android:fillColor="#1F6B3B" android:fillAlpha="0.18"
+        android:pathData="M54,38 L38,78 L44,78 Z"/>
+    <path android:fillColor="#1F6B3B" android:fillAlpha="0.18"
+        android:pathData="M54,38 L64,78 L70,78 Z"/>
+    <!-- droplets -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M32,90 m-2.8,0 a2.8,2.8 0 1 1 5.6,0 a2.8,2.8 0 1 1 -5.6,0 Z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M54,92 m-2.8,0 a2.8,2.8 0 1 1 5.6,0 a2.8,2.8 0 1 1 -5.6,0 Z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M76,90 m-2.8,0 a2.8,2.8 0 1 1 5.6,0 a2.8,2.8 0 1 1 -5.6,0 Z"/>
+  </group>
 </vector>
