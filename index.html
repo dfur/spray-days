@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com; manifest-src 'self'; worker-src 'self'">
+<meta name="theme-color" content="#1f6b3b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>Spray Windows</title>
+<style>
+  :root{
+    /* iOS/PWA safe-area default; the Android app overrides via an inline
+       documentElement style (which beats this rule) */
+    --inset-top: env(safe-area-inset-top, 0px);
+    --go:#2e9e4f; --go-bg:#e6f6ec;
+    --marg:#e8a317; --marg-bg:#fdf4e0;
+    --nogo:#d24545; --nogo-bg:#fbe9e9;
+    --ink:#1f2a24; --muted:#6b7a72; --line:#e3e8e5; --card:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:#f4f7f5; line-height:1.5;
+    padding:0 0 calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+  header{
+    background:linear-gradient(135deg,#1f6b3b,#2e9e4f); color:#fff;
+    /* --inset-top is injected by the Android app (status bar height); 0 in browsers */
+    padding:calc(28px + var(--inset-top,0px)) 32px 24px;
+    box-shadow:0 2px 14px rgba(0,0,0,.12);
+  }
+  header h1{margin:0; font-size:25px; font-weight:650; letter-spacing:-.3px}
+  header .loc{font-size:16px; font-weight:500; opacity:.95; margin:1px 0 4px;
+    background:none; border:none; color:#fff; font-family:inherit; padding:0;
+    cursor:pointer; display:block; text-align:left}
+  header .loc:active{opacity:.7}
+  header .sub{opacity:.92; font-size:14px}
+  header .meta{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  header .chip{background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25);
+    padding:4px 11px; border-radius:20px; font-size:12.5px; backdrop-filter:blur(4px)}
+  button.chip{cursor:pointer; font-family:inherit; font-size:12.5px;
+    background:rgba(255,255,255,.22); border:1px solid rgba(255,255,255,.35);
+    color:#fff; padding:4px 11px; border-radius:20px; backdrop-filter:blur(4px)}
+  button.chip:active{background:rgba(255,255,255,.35)}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 20px}
+
+  section{background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; margin-top:22px; box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  h2{font-size:16px; margin:0 0 14px; font-weight:650}
+
+  .best{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px}
+  .bcard{border:1px solid var(--line); border-left:4px solid var(--go); border-radius:10px; padding:13px 15px; background:#fafdfb}
+  .bcard .rank{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:600}
+  .bcard .when{font-size:16px; font-weight:650; margin:2px 0 5px}
+  .bcard .why{font-size:12.5px; color:var(--muted)}
+  .bcard.top{border-left-color:#1f6b3b; background:#eef8f1}
+  .bcard.none{border-left-color:var(--nogo); background:#fbe9e9}
+
+  /* Transposed: days across the top, hours down the left (phone-friendly) */
+  .grid{display:grid; grid-template-columns:52px repeat(7,minmax(76px,1fr)); gap:4px; min-width:600px}
+  .scroll{overflow-x:auto; padding-bottom:6px}
+  .corner{position:sticky; left:0; background:var(--card); z-index:6}
+  .dayhd{text-align:center; padding-bottom:4px}
+  .dayhd .dow{display:block; font-weight:650; font-size:13.5px}
+  .dayhd .dt{display:block; font-size:11px; color:var(--muted)}
+  .hourlabel{display:flex; align-items:center; justify-content:flex-end; padding-right:7px;
+    font-size:12px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums;
+    position:sticky; left:0; background:var(--card); z-index:6}
+  .cell{border-radius:7px; min-height:48px; padding:4px 3px 3px; cursor:default;
+    display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+    border:1px solid transparent; transition:transform .08s, box-shadow .08s; position:relative}
+  .cell:hover{transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.16); z-index:5}
+  .cell .dt{font-size:12px; font-weight:650}
+  .cell .ic{font-size:11px; letter-spacing:1px; line-height:1.1; min-height:13px}
+  .cell.GO{background:var(--go-bg); border-color:#bfe6cd; color:#1d6e38}
+  .cell.MARGINAL{background:var(--marg-bg); border-color:#f3dca0; color:#9a6c08}
+  .cell.NOGO{background:var(--nogo-bg); border-color:#f0c4c4; color:#a83232}
+
+  .legend{display:flex; flex-wrap:wrap; gap:22px}
+  .legcol{font-size:12.5px}
+  .legcol .lh{font-weight:650; margin-bottom:7px; font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted)}
+  .legrow{display:flex; align-items:center; gap:8px; margin-bottom:5px}
+  .sw{width:16px; height:16px; border-radius:5px; border:1px solid rgba(0,0,0,.1); flex:none}
+  .sw.go{background:var(--go-bg); border-color:#bfe6cd}
+  .sw.ma{background:var(--marg-bg); border-color:#f3dca0}
+  .sw.no{background:var(--nogo-bg); border-color:#f0c4c4}
+  .fic{width:18px; text-align:center; flex:none}
+
+  #tip{position:fixed; pointer-events:none; opacity:0; transition:opacity .1s; z-index:50;
+    background:#13211a; color:#fff; border-radius:10px; padding:11px 13px; font-size:12.5px;
+    box-shadow:0 8px 26px rgba(0,0,0,.3); max-width:250px}
+  #tip .tt{font-weight:700; font-size:13.5px; margin-bottom:6px; display:flex; justify-content:space-between; gap:12px}
+  #tip .v{padding:1px 8px; border-radius:20px; font-size:11px; font-weight:700}
+  #tip .v.GO{background:var(--go)} #tip .v.MARGINAL{background:var(--marg)} #tip .v.NOGO{background:var(--nogo)}
+  #tip table{border-collapse:collapse; width:100%}
+  #tip td{padding:1px 0; font-variant-numeric:tabular-nums}
+  #tip td:first-child{color:#9fb6aa; padding-right:14px}
+  #tip .flags{margin-top:7px; border-top:1px solid rgba(255,255,255,.15); padding-top:6px; color:#ffd9a8}
+  .note{font-size:12.5px; color:var(--muted); margin-top:8px}
+  .disc{background:#fff8e8; border:1px solid #f0dca8; border-radius:10px; padding:12px 15px; font-size:12.5px; color:#7a5a14}
+
+  /* Loading overlay */
+  #loading{
+    position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:#f4f7f5; z-index:100; gap:16px;
+  }
+  .spinner{
+    width:40px; height:40px; border:4px solid #c8dfd0; border-top-color:#2e9e4f;
+    border-radius:50%; animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loading p{color:var(--muted); font-size:14px; margin:0}
+
+  /* Error state */
+  #error-state{
+    display:none; position:fixed; inset:0; align-items:center; justify-content:center;
+    background:#f4f7f5; z-index:100; flex-direction:column; gap:12px; padding:24px; text-align:center;
+  }
+  #error-state .eicon{font-size:40px}
+  #error-state p{color:var(--muted); font-size:14px; margin:0; max-width:320px}
+  #error-state button{
+    background:var(--go); color:#fff; border:none; padding:10px 22px;
+    border-radius:20px; font-size:14px; cursor:pointer; font-family:inherit;
+  }
+
+  /* Narrow screens: shrink gutters so the grid gets the width */
+  @media (max-width:600px){
+    header{padding:calc(18px + var(--inset-top,0px)) 16px 14px}
+    .wrap{padding:0 6px}
+    section{padding:14px 10px; margin-top:12px; border-radius:10px}
+    .grid{grid-template-columns:44px repeat(7,minmax(70px,1fr)); gap:3px}
+    .hourlabel{padding-right:5px; font-size:11.5px}
+    /* legend stacks to one column: drop the alignment-only blank heading */
+    .legend{gap:12px}
+    .legcol .lh.blank{display:none}
+  }
+
+  /* Location picker */
+  #loc-panel{display:none; position:fixed; inset:0; z-index:110; background:#f4f7f5;
+    padding:calc(24px + var(--inset-top,0px)) 24px 24px; overflow-y:auto}
+  #loc-panel .inner{max-width:420px; margin:6vh auto 0; display:flex; flex-direction:column; gap:12px}
+  #loc-panel h2{margin:0; font-size:19px}
+  #loc-panel .hint{font-size:13.5px; color:var(--muted); margin:0}
+  /* 16px font so iOS doesn't zoom the page on focus */
+  #loc-input{padding:12px 14px; font-size:16px; border:1px solid var(--line); border-radius:10px;
+    width:100%; font-family:inherit; background:#fff; -webkit-appearance:none}
+  .loc-result{text-align:left; padding:11px 14px; background:#fff; border:1px solid var(--line);
+    border-radius:10px; font-size:14.5px; cursor:pointer; font-family:inherit; width:100%; color:var(--ink)}
+  .loc-result:active{background:var(--go-bg)}
+  .loc-result .rsub{display:block; color:var(--muted); font-size:12px}
+  #loc-gps{background:var(--go); color:#fff; border:none; padding:12px 16px; border-radius:10px;
+    font-size:14.5px; cursor:pointer; font-family:inherit}
+  #loc-gps:active{background:#1f6b3b}
+  #loc-status{font-size:13px; color:var(--muted); min-height:18px; margin:0}
+  #loc-cancel{background:none; border:none; color:var(--muted); font-size:13.5px;
+    cursor:pointer; font-family:inherit; padding:8px}
+
+  /* Stale banner */
+  #stale-banner{
+    display:none; background:#fff3cd; border-bottom:1px solid #f0dca8;
+    padding:calc(8px + var(--inset-top,0px)) 20px 8px; font-size:12.5px; color:#7a5a14; text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Fetching forecast…</p>
+</div>
+
+<div id="error-state">
+  <div class="eicon">🌐</div>
+  <p id="error-msg">Could not fetch forecast.</p>
+  <button onclick="loadForecast(true)">Try Again</button>
+</div>
+
+<div id="loc-panel">
+  <div class="inner">
+    <h2>📍 Choose your spray location</h2>
+    <p class="hint">Forecasts are point-based — pick the town nearest your paddocks.</p>
+    <input id="loc-input" type="search" placeholder="Search for a town…" autocomplete="off">
+    <div id="loc-results"></div>
+    <button id="loc-gps">📍 Use my location</button>
+    <p id="loc-status"></p>
+    <button id="loc-cancel">Cancel</button>
+  </div>
+</div>
+
+<div id="stale-banner"></div>
+
+<header>
+  <h1>🌾 Spray Windows</h1>
+  <button class="loc" id="loc-line">Set location ▾</button>
+  <div class="sub">7-day hourly suitability · General / herbicide profile</div>
+  <div class="meta">
+    <span class="chip" id="coordchip">📍 —</span>
+    <span class="chip" id="genchip">📅 Loading…</span>
+    <span class="chip">🛰️ Open-Meteo forecast</span>
+    <span class="chip" id="sunchip">🌅 · 🌇</span>
+    <button class="chip" id="refresh-btn">↺ Refresh</button>
+  </div>
+</header>
+
+<div id="main-content" style="display:none">
+<div class="wrap">
+
+  <section>
+    <h2>⭐ Best windows this week</h2>
+    <div class="best" id="best"></div>
+  </section>
+
+  <section>
+    <h2>Hourly verdict &amp; flags (07:00–18:00)</h2>
+    <div class="scroll"><div class="grid" id="grid"></div></div>
+    <div class="note">Each cell shows <b>Delta T</b> and active warning icons. Hover any cell for full conditions. Night hours (outside 07–18) are not sprayable and omitted.</div>
+  </section>
+
+  <section>
+    <h2>Legend</h2>
+    <div class="legend">
+      <div class="legcol">
+        <div class="lh">Verdict</div>
+        <div class="legrow"><span class="sw go"></span> <b>GO</b> — all factors within range</div>
+        <div class="legrow"><span class="sw ma"></span> <b>MARGINAL</b> — proceed with caution</div>
+        <div class="legrow"><span class="sw no"></span> <b>NO-GO</b> — do not spray</div>
+      </div>
+      <div class="legcol">
+        <div class="lh">Flag icons</div>
+        <div class="legrow"><span class="fic">💨</span> Wind too strong (&gt;15 km/h)</div>
+        <div class="legrow"><span class="fic">🍃</span> Wind too light (&lt;3 km/h)</div>
+        <div class="legrow"><span class="fic">🌫️</span> Low Delta T (&lt;2 — poor uptake / inversion-prone)</div>
+        <div class="legrow"><span class="fic">🔥</span> High Delta T (&gt;8 — fast evaporation)</div>
+      </div>
+      <div class="legcol">
+        <div class="lh blank">&nbsp;</div>
+        <div class="legrow"><span class="fic">🌧️</span> Rain within 2 h</div>
+        <div class="legrow"><span class="fic">🌦️</span> Rain risk (≥60% chance)</div>
+        <div class="legrow"><span class="fic">🔄</span> Inversion likely</div>
+        <div class="legrow"><span class="fic">🌙</span> Dawn/dusk edge</div>
+        <div class="legrow"><span class="fic">💧</span> Dew risk</div>
+        <div class="legrow"><span class="fic">🌁</span> Fog (vis &lt;1 km — NO-GO)</div>
+        <div class="legrow"><span class="fic">❄️</span> Frost</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="disc">
+    ⚠️ <b>Forecast-based guidance only.</b> Always confirm with a calibrated weather meter on-site at the time of spraying (wind, Delta T) and follow the product label for specific wind / Delta T / rainfast / inversion conditions. Forecasts cannot reliably detect surface temperature <b>inversions</b> — do a physical check (smoke test, ground vs. 1.5 m temp, mist settling) near dawn and dusk. Mid-winter Delta T is structurally low, so the dominant risks here are inversions and slow leaf-drying, not droplet evaporation.
+  </section>
+
+</div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+// ---- config -----------------------------------------------------------------
+// No default location: LOC stays null until the user picks one, and nothing is
+// fetched before that. Coordinates are rounded to 2 decimals (~1 km) before
+// being stored or sent — ample for a point forecast, and never an exact position.
+const LOC_KEY = 'sprayLocation_v1';
+const GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+const CACHE_MAX_AGE = 6 * 60 * 60 * 1000; // 6 hours
+
+function apiUrl() {
+  return `https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}&hourly=temperature_2m,relativehumidity_2m,dewpoint_2m,wet_bulb_temperature_2m,windspeed_10m,windgusts_10m,winddirection_10m,precipitation,precipitation_probability,cloudcover,visibility&daily=sunrise,sunset&timezone=auto&windspeed_unit=kmh&forecast_days=7`;
+}
+function cacheKey() { return `sprayForecast_v2_${LOC.lat},${LOC.lon}`; }
+
+// ---- module state -----------------------------------------------------------
+let DATA = [], META = {}, LOC = null;
+
+// ---- location ---------------------------------------------------------------
+const round2 = v => Math.round(v * 100) / 100;
+
+function readLoc() {
+  try {
+    const l = JSON.parse(localStorage.getItem(LOC_KEY));
+    if (l && typeof l.name === 'string' && isFinite(l.lat) && isFinite(l.lon)) return l;
+  } catch {}
+  return null;
+}
+
+function setLoc(l) {
+  LOC = { name: l.name, lat: round2(l.lat), lon: round2(l.lon) };
+  try { localStorage.setItem(LOC_KEY, JSON.stringify(LOC)); } catch {}
+  updateLocUI();
+}
+
+function updateLocUI() {
+  // location name is third-party (geocoder) data: textContent only, never HTML
+  document.getElementById('loc-line').textContent = (LOC ? LOC.name : 'Set location') + ' ▾';
+  document.getElementById('coordchip').textContent = LOC ? `📍 ${LOC.lat}, ${LOC.lon}` : '📍 —';
+  document.title = LOC ? `Spray Windows — ${LOC.name}` : 'Spray Windows';
+}
+
+function showLocPanel(firstRun) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('loc-panel').style.display = 'block';
+  document.getElementById('loc-cancel').style.display = firstRun ? 'none' : '';
+  document.getElementById('loc-status').textContent =
+    firstRun ? 'Nothing is fetched until you choose a location.' : '';
+}
+
+function hideLocPanel() {
+  document.getElementById('loc-panel').style.display = 'none';
+  document.getElementById('loc-results').replaceChildren();
+  document.getElementById('loc-input').value = '';
+  document.getElementById('loc-status').textContent = '';
+}
+
+function chooseLoc(l) {
+  setLoc(l);
+  hideLocPanel();
+  loadForecast(false); // per-location cache: instant if this spot was viewed recently
+}
+
+function renderLocResults(results) {
+  const box = document.getElementById('loc-results');
+  box.replaceChildren();
+  for (const r of results) {
+    const b = document.createElement('button');
+    b.className = 'loc-result';
+    b.textContent = r.name;
+    const sub = document.createElement('span');
+    sub.className = 'rsub';
+    sub.textContent = [r.admin1, r.country].filter(Boolean).join(', ')
+      + ` · ${round2(r.latitude)}, ${round2(r.longitude)}`;
+    b.appendChild(sub);
+    b.addEventListener('click', () => chooseLoc({ name: r.name, lat: r.latitude, lon: r.longitude }));
+    box.appendChild(b);
+  }
+}
+
+let searchTimer = null, searchSeq = 0;
+async function searchLoc(q) {
+  const status = document.getElementById('loc-status');
+  const seq = ++searchSeq;
+  if (q.trim().length < 2) { document.getElementById('loc-results').replaceChildren(); return; }
+  try {
+    const res = await fetch(`${GEOCODE_URL}?name=${encodeURIComponent(q.trim())}&count=6&language=en&format=json`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const j = await res.json();
+    if (seq !== searchSeq) return; // a newer search superseded this one
+    const results = j.results || [];
+    status.textContent = results.length ? '' : 'No places found — try a bigger town nearby.';
+    renderLocResults(results);
+  } catch {
+    if (seq === searchSeq) status.textContent = 'Search failed — check your connection.';
+  }
+}
+
+function gpsLoc() {
+  const status = document.getElementById('loc-status');
+  if (!('geolocation' in navigator)) { status.textContent = 'Location not available on this device.'; return; }
+  status.textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(
+    pos => chooseLoc({ name: 'My location', lat: pos.coords.latitude, lon: pos.coords.longitude }),
+    () => { status.textContent = 'Could not get a position — search for a town instead.'; },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+  );
+}
+
+// ---- constants (same as template) ------------------------------------------
+const FLAG = {
+  "wind-high":["💨","Wind too strong"], "wind-low":["🍃","Wind too light"],
+  "dt-low":["🌫️","Low Delta T (poor uptake)"], "dt-high":["🔥","High Delta T (evaporation)"],
+  "rain":["🌧️","Rain within 2 h"], "rain-risk":["🌦️","Rain risk ≥60%"],
+  "inversion":["🔄","Inversion likely"], "edge":["🌙","Dawn/dusk edge"],
+  "dew":["💧","Dew risk"], "frost":["❄️","Frost"],
+  "fog":["🌁","Fog (visibility <1 km)"]
+};
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const lbl = d => { const x=new Date(d+'T00:00:00'); return `${DOW[x.getDay()]} ${x.getDate()} ${MON[x.getMonth()]}`; };
+
+// ---- scoring: JS port of the jq filter in "Update Spray Forecast.command" --
+// Thresholds must match the .command file exactly (wind km/h, Delta T unitless).
+function scoreHours(raw) {
+  const h = raw.hourly;
+  const data = [];
+  for (let i = 0; i < h.time.length; i++) {
+    const hr = parseInt(h.time[i].slice(11, 13));
+    if (hr < 7 || hr > 18) continue;
+    const T  = h.temperature_2m[i];
+    const WB = h.wet_bulb_temperature_2m[i];
+    const dt = T - WB;
+    const rh = h.relativehumidity_2m[i];
+    const w  = h.windspeed_10m[i];
+    const g  = h.windgusts_10m[i];
+    const wd = h.winddirection_10m[i];
+    const pp = h.precipitation_probability[i] ?? 0;
+    const cc = h.cloudcover[i];
+    const vis = h.visibility[i] ?? 10000;
+    // rain next 2 h: guard against Math.max(...[]) = -Infinity on empty arrays
+    const tail = [h.precipitation[i], h.precipitation[i+1], h.precipitation[i+2]].filter(x => x != null);
+    const pnext = tail.length ? Math.max(...tail) : 0;
+
+    const wf   = w < 3 ? 'WIND_LOW' : w <= 15 ? 'ok' : w <= 20 ? 'WIND_HIGH' : 'WIND_X';
+    const df   = dt < 2 ? 'DT_LOW' : dt <= 8 ? 'ok' : dt <= 10 ? 'DT_HI' : 'DT_X';
+    const rf   = pnext > 0.2 ? 'RAIN2h' : pp >= 60 ? 'rainrisk' : 'ok';
+    const invf = (hr <= 9 || hr >= 16) ? (w < 6 && cc < 40 ? 'INVERSION' : 'edge') : 'ok';
+    const frost = T <= 2 ? 'FROST' : 'ok';
+    const dew  = (rh >= 93 && T < 8) ? 'DEW' : 'ok';
+    const fogf = vis < 1000 ? 'FOG' : 'ok';
+
+    let v;
+    if (rf==='RAIN2h' || wf==='WIND_X' || df==='DT_X' || invf==='INVERSION' || frost==='FROST' || fogf==='FOG') {
+      v = 'NO-GO';
+    } else if (wf==='WIND_HIGH' || df==='DT_HI' || df==='DT_LOW' || wf==='WIND_LOW' || rf==='rainrisk' || invf==='edge' || dew==='DEW') {
+      v = 'MARGINAL';
+    } else {
+      v = 'GO';
+    }
+
+    const f = [];
+    if (wf==='WIND_HIGH' || wf==='WIND_X') f.push('wind-high');
+    if (wf==='WIND_LOW') f.push('wind-low');
+    if (df==='DT_LOW') f.push('dt-low');
+    else if (df==='DT_HI' || df==='DT_X') f.push('dt-high');
+    if (rf==='RAIN2h') f.push('rain');
+    else if (rf==='rainrisk') f.push('rain-risk');
+    if (invf==='INVERSION') f.push('inversion');
+    else if (invf==='edge') f.push('edge');
+    if (frost==='FROST') f.push('frost');
+    if (dew==='DEW') f.push('dew');
+    if (fogf==='FOG') f.push('fog');
+
+    data.push({ d:h.time[i].slice(0,10), hr, T, dt:Math.round(dt*10)/10, rh, w, g, wd, pp, cc, vis, v, f });
+  }
+
+  const meta = {
+    daily: {
+      time: raw.daily.time,
+      sunrise: raw.daily.sunrise.map(s => s.slice(11,16)),
+      sunset:  raw.daily.sunset.map(s => s.slice(11,16))
+    }
+  };
+  return { data, meta };
+}
+
+// ---- best windows (same logic as template) ----------------------------------
+function bestWindows(data){
+  const runs=[]; let cur=null;
+  for(const r of data){
+    if(r.v==='GO'){
+      if(cur && cur.d===r.d && r.hr===cur.end+1){ cur.end=r.hr; cur.rows.push(r); }
+      else { if(cur) runs.push(cur); cur={d:r.d,start:r.hr,end:r.hr,rows:[r]}; }
+    } else if(cur){ runs.push(cur); cur=null; }
+  }
+  if(cur) runs.push(cur);
+  runs.forEach(run=>{
+    run.len = run.end-run.start+1;
+    const q = run.rows.reduce((s,x)=> s+(x.dt>=2&&x.dt<=8?1:0)+(x.w>=3&&x.w<=15?1:0),0)/(run.rows.length*2);
+    run.q = q;
+  });
+  runs.sort((a,b)=> b.len-a.len || b.q-a.q || a.d.localeCompare(b.d) || a.start-b.start);
+  return runs.slice(0,4);
+}
+function why(run){
+  const ws=run.rows.map(r=>r.w), ds=run.rows.map(r=>r.dt), pps=run.rows.map(r=>r.pp);
+  const mm=(a)=>{const lo=Math.min(...a),hi=Math.max(...a); return lo===hi?lo:`${lo}–${hi}`;};
+  const maxpp=Math.max(...pps);
+  const rain = maxpp>=40 ? `rain risk ${maxpp}%` : 'dry';
+  return `Wind ${mm(ws)} km/h · Delta T ${mm(ds)} · ${rain}`;
+}
+
+// ---- rendering (same logic as template) ------------------------------------
+function renderPage() {
+  // best windows
+  const best = bestWindows(DATA);
+  const bestEl = document.getElementById('best');
+  if(!best.length){
+    bestEl.innerHTML = `<div class="bcard none"><div class="rank">No GO windows</div><div class="when">None this week</div><div class="why">No hours met all criteria. Check the grid for the least-bad MARGINAL hours and verify on-site.</div></div>`;
+  } else {
+    bestEl.innerHTML = best.map((run,i)=>{
+      const span = `${run.start}:00–${run.end+1}:00`;
+      const rank = i===0 ? '⭐ Top pick' : `Option ${i+1} · ${run.len} h`;
+      return `<div class="bcard${i===0?' top':''}"><div class="rank">${rank}</div>`+
+             `<div class="when">${lbl(run.d)} · ${span}</div>`+
+             `<div class="why">${why(run)} · ${run.len} h block</div></div>`;
+    }).join('');
+  }
+
+  // sun chip
+  document.getElementById('sunchip').textContent = `🌅 ${META.daily.sunrise[0]} · 🌇 ${META.daily.sunset[0]}`;
+
+  // heatmap grid — days across the top, hours down the left
+  const hours = [7,8,9,10,11,12,13,14,15,16,17,18];
+  let html = '<div class="corner"></div>' + META.daily.time.map(day=>{
+    const x = new Date(day+'T00:00:00');
+    return `<div class="dayhd"><span class="dow">${DOW[x.getDay()]}</span>`+
+      `<span class="dt">${x.getDate()} ${MON[x.getMonth()]}</span></div>`;
+  }).join('');
+  hours.forEach(h=>{
+    html += `<div class="hourlabel">${h}:00</div>`;
+    META.daily.time.forEach(day=>{
+      const r = DATA.find(z=>z.d===day && z.hr===h);
+      if(!r){ html+='<div class="cell"></div>'; return; }
+      const cls = r.v==='NO-GO'?'NOGO':r.v;
+      const icons = r.f.map(f=>FLAG[f]?FLAG[f][0]:'').join('');
+      html += `<div class="cell ${cls}" data-i="${DATA.indexOf(r)}"><span class="ic">${icons}</span><span class="dt">${r.dt}</span></div>`;
+    });
+  });
+  document.getElementById('grid').innerHTML = html;
+}
+
+// ---- UI state helpers -------------------------------------------------------
+function showLoading() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('error-state').style.display = 'none';
+  document.getElementById('main-content').style.display = 'none';
+}
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  const es = document.getElementById('error-state');
+  es.style.display = 'flex';
+  document.getElementById('error-msg').textContent = msg || 'Could not fetch forecast. Check your connection and try again.';
+  document.getElementById('main-content').style.display = 'none';
+}
+function showMain(ts, stale) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error-state').style.display = 'none';
+  document.getElementById('main-content').style.display = '';
+  // format generated time
+  const d = new Date(ts);
+  const mo = MON[d.getMonth()];
+  let h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const mStr = m.toString().padStart(2,'0');
+  document.getElementById('genchip').textContent = `📅 ${d.getDate()} ${mo} ${d.getFullYear()}, ${h}:${mStr} ${ap}`;
+  const banner = document.getElementById('stale-banner');
+  if (stale) {
+    const age = Math.round((Date.now() - ts) / 60000);
+    banner.textContent = `⚠️ Showing cached forecast from ${age} min ago — tap Refresh when you have a connection.`;
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// ---- cache ------------------------------------------------------------------
+function readCache(allowStale) {
+  try {
+    const raw = localStorage.getItem(cacheKey());
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    if (!allowStale && Date.now() - c.ts > CACHE_MAX_AGE) return null;
+    return c;
+  } catch { return null; }
+}
+
+// ---- fetch & render ---------------------------------------------------------
+async function loadForecast(force) {
+  if (!LOC) { showLocPanel(true); return; }
+  if (!force) {
+    const c = readCache(false);
+    if (c) {
+      DATA = c.data; META = c.meta;
+      showMain(c.ts, false);
+      renderPage();
+      return;
+    }
+  }
+  showLoading();
+  try {
+    const res = await fetch(apiUrl());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.json();
+    const scored = scoreHours(raw);
+    DATA = scored.data; META = scored.meta;
+    const ts = Date.now();
+    try { localStorage.setItem(cacheKey(), JSON.stringify({ts, data:DATA, meta:META})); } catch(e) {}
+    showMain(ts, false);
+    renderPage();
+  } catch(err) {
+    const c = readCache(true);
+    if (c) {
+      DATA = c.data; META = c.meta;
+      showMain(c.ts, true);
+      renderPage();
+    } else {
+      showError(err.message);
+    }
+  }
+}
+
+// ---- tooltip (same as template) --------------------------------------------
+const grid = document.getElementById('grid');
+const tip  = document.getElementById('tip');
+grid.addEventListener('mousemove', e=>{
+  const c = e.target.closest('.cell[data-i]');
+  if(!c){ tip.style.opacity=0; return; }
+  const r = DATA[+c.dataset.i];
+  if(!r){ tip.style.opacity=0; return; }
+  const x = new Date(r.d+'T00:00:00');
+  const flags = r.f.length? r.f.map(f=>FLAG[f]?FLAG[f][0]+' '+FLAG[f][1]:f).join('<br>') : 'None — all clear';
+  const vcls = r.v==='NO-GO'?'NOGO':r.v;
+  tip.innerHTML = `<div class="tt"><span>${DOW[x.getDay()]} ${r.hr}:00</span><span class="v ${vcls}">${r.v}</span></div>`+
+    `<table>`+
+    `<tr><td>Temp</td><td>${r.T} °C</td></tr>`+
+    `<tr><td>Delta T</td><td>${r.dt}</td></tr>`+
+    `<tr><td>Humidity</td><td>${r.rh}%</td></tr>`+
+    `<tr><td>Wind</td><td>${r.w} km/h (gust ${r.g})</td></tr>`+
+    `<tr><td>Wind dir</td><td>${r.wd}°</td></tr>`+
+    `<tr><td>Rain chance</td><td>${r.pp}%</td></tr>`+
+    `<tr><td>Cloud</td><td>${r.cc}%</td></tr>`+
+    `<tr><td>Visibility</td><td>${r.vis>=1000?(r.vis/1000).toFixed(1)+' km':r.vis+' m'}</td></tr></table>`+
+    `<div class="flags">${flags}</div>`;
+  tip.style.opacity=1;
+  // Anchor to the tapped cell: centred below it, flipped above when near the
+  // bottom of the screen, and always clamped fully inside the viewport.
+  const rect = c.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  const vw = window.innerWidth, vh = window.innerHeight, m = 8;
+  let px = rect.left + rect.width/2 - tw/2;
+  px = Math.max(m, Math.min(px, vw - tw - m));
+  let py = rect.bottom + m;
+  if (py + th > vh - m) py = rect.top - th - m;
+  py = Math.max(m, Math.min(py, vh - th - m));
+  tip.style.left=px+'px'; tip.style.top=py+'px';
+});
+grid.addEventListener('mouseleave', ()=> tip.style.opacity=0);
+
+// ---- init -------------------------------------------------------------------
+document.getElementById('refresh-btn').addEventListener('click', () => loadForecast(true));
+document.getElementById('loc-line').addEventListener('click', () => showLocPanel(false));
+document.getElementById('loc-cancel').addEventListener('click', hideLocPanel);
+document.getElementById('loc-gps').addEventListener('click', gpsLoc);
+document.getElementById('loc-input').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => searchLoc(e.target.value), 350);
+});
+
+localStorage.removeItem('sprayForecast_v1'); // pre-location cache, no longer read
+LOC = readLoc();
+updateLocUI();
+if (LOC) loadForecast(false);
+else showLocPanel(true);
+
+// Service worker: hosted (https) pages only — not the Android WebView's
+// appassets origin (it bundles the HTML itself) and not local file: use.
+if ('serviceWorker' in navigator && location.protocol === 'https:'
+    && location.hostname !== 'appassets.androidplatform.net') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

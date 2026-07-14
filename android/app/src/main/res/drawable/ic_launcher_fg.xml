@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Spray droplet icon on green adaptive background -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+  <!-- Raindrop / spray droplet -->
+  <path android:fillColor="#FFFFFF"
+      android:pathData="M54,18 C42,34 32,48 32,60 C32,74.4 42,84 54,84 C66,84 76,74.4 76,60 C76,48 66,34 54,18 Z"/>
+</vector>

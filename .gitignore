@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# scratch / temp
+*.tmp
+raw.json
+scored.json
+meta.json
+
+# local-only files (not published)
+Spray Windows — *.md
+sunrise.html
