@@ -3,7 +3,9 @@
 *Drafted 12 Jun 2026. Status: **Phase A done, 14 Jul 2026** (with revisions:
 Pages served from repo root, `spray-windows-live.html` renamed `index.html`,
 selectable location with no default, jq path retired — JS scoring now
-canonical). Phase B (native shell) remains contingent on the PWA disappointing.*
+canonical). Verified working on iPad (home-screen PWA) and Pixel (APK),
+including location search and GPS. Phase B (native shell) remains contingent
+on the PWA disappointing.*
 
 ## Decision summary
 
