@@ -1,4 +1,4 @@
-# Spray Windows — project notes for Claude
+# Spray Days — project notes for Claude
 
 Location-agnostic agricultural spraying-window forecast. A single self-contained
 web page fetches a 7-day forecast for the user's chosen location, scores each
@@ -6,7 +6,7 @@ daytime hour (07:00–18:00) for spray suitability, and renders an interactive
 report. Runs as a PWA (GitHub Pages), an Android WebView app, and a plain local
 HTML file.
 
-**Live app:** <https://dfur.github.io/spray-forecast/> (GitHub Pages, served
+**Live app:** <https://dfur.github.io/spray-days/> (GitHub Pages, served
 from the repo root of `master`; pushes redeploy in ~1 min).
 
 ## Stack / environment

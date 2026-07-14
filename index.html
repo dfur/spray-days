@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<title>Spray Windows</title>
+<title>Spray Days</title>
 <style>
   :root{
     /* iOS/PWA safe-area default; the Android app overrides via an inline
@@ -195,7 +195,7 @@
 <div id="stale-banner"></div>
 
 <header>
-  <h1>🌾 Spray Windows</h1>
+  <h1>🌾 Spray Days</h1>
   <button class="loc" id="loc-line">Set location ▾</button>
   <div class="sub">7-day hourly suitability · General / herbicide profile</div>
   <div class="meta">
@@ -297,7 +297,7 @@ function updateLocUI() {
   // location name is third-party (geocoder) data: textContent only, never HTML
   document.getElementById('loc-line').textContent = (LOC ? LOC.name : 'Set location') + ' ▾';
   document.getElementById('coordchip').textContent = LOC ? `📍 ${LOC.lat}, ${LOC.lon}` : '📍 —';
-  document.title = LOC ? `Spray Windows — ${LOC.name}` : 'Spray Windows';
+  document.title = LOC ? `Spray Days — ${LOC.name}` : 'Spray Days';
 }
 
 function showLocPanel(firstRun) {

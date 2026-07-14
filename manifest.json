@@ -1,6 +1,6 @@
 {
-  "name": "Spray Windows",
-  "short_name": "Spray",
+  "name": "Spray Days",
+  "short_name": "Spray Days",
   "description": "7-day hourly spray-window suitability forecast",
   "start_url": "./",
   "scope": "./",
