@@ -356,14 +356,24 @@ async function searchLoc(q) {
   }
 }
 
-function gpsLoc() {
+function gpsLoc(isRetry) {
   const status = document.getElementById('loc-status');
   if (!('geolocation' in navigator)) { status.textContent = 'Location not available on this device.'; return; }
-  status.textContent = 'Locating…';
+  status.textContent = isRetry ? 'Still locating — first fix can take a while…' : 'Locating…';
   navigator.geolocation.getCurrentPosition(
     pos => chooseLoc({ name: 'My location', lat: pos.coords.latitude, lon: pos.coords.longitude }),
-    () => { status.textContent = 'Could not get a position — search for a town instead.'; },
-    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    err => {
+      if (err.code === err.PERMISSION_DENIED) {
+        status.textContent = 'Location permission denied — allow it in settings, or search for a town.';
+      } else if (!isRetry) {
+        // First attempt often dies while the permission prompt is up, or the
+        // cold fix outlasts the timeout — one automatic retry fixes both.
+        gpsLoc(true);
+      } else {
+        status.textContent = 'Could not get a position — try again outside, or search for a town.';
+      }
+    },
+    { enableHighAccuracy: false, timeout: 30000, maximumAge: 300000 }
   );
 }
 
@@ -632,7 +642,7 @@ grid.addEventListener('mouseleave', ()=> tip.style.opacity=0);
 document.getElementById('refresh-btn').addEventListener('click', () => loadForecast(true));
 document.getElementById('loc-line').addEventListener('click', () => showLocPanel(false));
 document.getElementById('loc-cancel').addEventListener('click', hideLocPanel);
-document.getElementById('loc-gps').addEventListener('click', gpsLoc);
+document.getElementById('loc-gps').addEventListener('click', () => gpsLoc(false));
 document.getElementById('loc-input').addEventListener('input', e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => searchLoc(e.target.value), 350);
