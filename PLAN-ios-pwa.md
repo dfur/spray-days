@@ -4,8 +4,11 @@
 Pages served from repo root, `spray-windows-live.html` renamed `index.html`,
 selectable location with no default, jq path retired — JS scoring now
 canonical). Verified working on iPad (home-screen PWA) and Pixel (APK),
-including location search and GPS. Phase B (native shell) remains contingent
-on the PWA disappointing.*
+including location search and GPS. Later on 14 Jul the app was renamed
+**Spray Days** — repo `dfur/spray-days`, live at
+https://dfur.github.io/spray-days/ (old spray-forecast Pages URL is dead;
+Pages URLs don't redirect). Phase B (native shell) remains contingent on the
+PWA disappointing.*
 
 ## Decision summary
 

@@ -26,6 +26,12 @@ from the repo root of `master`; pushes redeploy in ~1 min).
 - `manifest.json`, `sw.js`, `icons/`, `.nojekyll` — PWA/Pages support. `sw.js`
   caches the app shell only (network-first); it must never cache Open-Meteo
   responses. Bump its `CACHE` name when changing cached assets.
+- `icons/icon.svg` — icon source (flat-fan nozzle, mirrored by hand in the
+  Android vector `ic_launcher_fg.xml`). To regenerate PNGs: render **512 only**
+  with headless Chrome (`--screenshot --window-size=512,512`), then downscale
+  with `sips -z 180 180` / `-z 192 192` — Chrome silently ignores small
+  window sizes and crops the art. iOS bakes the icon at Add-to-Home-Screen
+  time, so icon changes need a remove + re-add on Apple devices.
 - `android/` — Android WebView APK. `app/build.gradle.kts` copies `index.html`
   into assets at build time — never hand-edit the copied asset. Build from
   `android/` with JDK 17 + ANDROID_HOME set, then `./gradlew assembleDebug`;
