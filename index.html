@@ -398,16 +398,18 @@ function scoreHours(raw) {
   for (let i = 0; i < h.time.length; i++) {
     const hr = parseInt(h.time[i].slice(11, 13));
     if (hr < 7 || hr > 18) continue;
-    const T  = h.temperature_2m[i];
-    const WB = h.wet_bulb_temperature_2m[i];
+    // Number() everything that later lands in innerHTML: API values are
+    // third-party data, and coercion guarantees no markup can ride along.
+    const T  = Number(h.temperature_2m[i]);
+    const WB = Number(h.wet_bulb_temperature_2m[i]);
     const dt = T - WB;
-    const rh = h.relativehumidity_2m[i];
-    const w  = h.windspeed_10m[i];
-    const g  = h.windgusts_10m[i];
-    const wd = h.winddirection_10m[i];
-    const pp = h.precipitation_probability[i] ?? 0;
-    const cc = h.cloudcover[i];
-    const vis = h.visibility[i] ?? 10000;
+    const rh = Number(h.relativehumidity_2m[i]);
+    const w  = Number(h.windspeed_10m[i]);
+    const g  = Number(h.windgusts_10m[i]);
+    const wd = Number(h.winddirection_10m[i]);
+    const pp = Number(h.precipitation_probability[i] ?? 0);
+    const cc = Number(h.cloudcover[i]);
+    const vis = Number(h.visibility[i] ?? 10000);
     // rain next 2 h: guard against Math.max(...[]) = -Infinity on empty arrays
     const tail = [h.precipitation[i], h.precipitation[i+1], h.precipitation[i+2]].filter(x => x != null);
     const pnext = tail.length ? Math.max(...tail) : 0;
