@@ -4,6 +4,9 @@ On-demand agricultural spraying-window forecast. Pick a location, get a 7-day
 hourly report: every daytime hour (07:00–18:00) scored GO / MARGINAL / NO-GO
 for spray suitability, with the reasons flagged.
 
+![Spray Days on an iPad: the best spraying windows for the week, above a grid of
+hourly verdicts with an hour's detail popup open](screenshot-ipad.png)
+
 **Live app: <https://dfur.github.io/spray-days/>**
 
 Data comes from [Open-Meteo](https://open-meteo.com) (free, no API key, no
